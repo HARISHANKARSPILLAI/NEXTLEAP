@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChatGPT Voice Input Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f5f5f3;
+    --text-primary: #1a1a1a;
+    --text-secondary: #6b6b6b;
+    --text-tertiary: #a0a0a0;
+    --border-light: rgba(0,0,0,0.08);
+    --border-mid: rgba(0,0,0,0.14);
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: #f0ede8;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 3rem 1.5rem 4rem;
+  }
+
+  .page-title {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #888;
+    margin-bottom: 2.5rem;
+    text-align: center;
+  }
+
+  .flow-row {
+    display: flex;
+    gap: 0;
+    justify-content: center;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    row-gap: 2.5rem;
+    max-width: 900px;
+    width: 100%;
+  }
+
+  .screen-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .arrow-col {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-top: 130px;
+    width: 44px;
+    flex-shrink: 0;
+  }
+
+  .step-badge {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #999;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+
+  .phone {
+    width: 172px;
+    height: 344px;
+    background: #ffffff;
+    border-radius: 30px;
+    border: 1.5px solid rgba(0,0,0,0.12);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+
+  .phone-notch {
+    width: 58px;
+    height: 11px;
+    background: rgba(0,0,0,0.08);
+    border-radius: 0 0 9px 9px;
+    margin: 0 auto 4px;
+    flex-shrink: 0;
+  }
+
+  .phone-status {
+    display: flex;
+    justify-content: space-between;
+    padding: 0 12px;
+    margin-bottom: 4px;
+    flex-shrink: 0;
+  }
+
+  .phone-status span {
+    font-size: 8px;
+    font-family: 'DM Mono', monospace;
+    color: #888;
+    font-weight: 500;
+  }
+
+  .phone-header {
+    display: flex;
+    align-items: center;
+    padding: 6px 10px;
+    border-bottom: 0.5px solid rgba(0,0,0,0.07);
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .gpt-logo {
+    width: 18px;
+    height: 18px;
+    background: #1a1a1a;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    color: white;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  .header-title {
+    font-size: 11px;
+    font-weight: 500;
+    color: #1a1a1a;
+    flex: 1;
+  }
+
+  .header-dots {
+    font-size: 14px;
+    color: #bbb;
+    letter-spacing: 1px;
+    line-height: 1;
+  }
+
+  .chat-area {
+    flex: 1;
+    overflow: hidden;
+    padding: 8px 8px 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .bubble {
+    padding: 6px 9px;
+    border-radius: 12px;
+    font-size: 9.5px;
+    line-height: 1.45;
+    max-width: 88%;
+    color: #1a1a1a;
+  }
+
+  .bubble.ai {
+    background: #f5f5f3;
+    border: 0.5px solid rgba(0,0,0,0.07);
+    align-self: flex-start;
+    border-radius: 4px 12px 12px 12px;
+  }
+
+  .bubble.user {
+    background: #1a1a1a;
+    color: white;
+    align-self: flex-end;
+    border-radius: 12px 4px 12px 12px;
+  }
+
+  .bubble.user.typing {
+    background: #f5f5f3;
+    border: 0.5px solid rgba(0,0,0,0.07);
+    color: #1a1a1a;
+    border-radius: 12px 4px 12px 12px;
+    font-style: italic;
+  }
+
+  .typing-cursor {
+    display: inline-block;
+    width: 1px;
+    height: 9px;
+    background: #888;
+    margin-left: 1px;
+    vertical-align: text-bottom;
+    animation: blink 1s infinite;
+  }
+
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  .nudge-bar {
+    margin: 3px 8px;
+    padding: 6px 8px;
+    background: #E6F1FB;
+    border: 0.5px solid #B5D4F4;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+  }
+
+  .nudge-icon {
+    width: 16px;
+    height: 16px;
+    background: #185FA5;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .nudge-text {
+    font-size: 8.5px;
+    color: #185FA5;
+    font-weight: 500;
+    flex: 1;
+    line-height: 1.3;
+  }
+
+  .nudge-try {
+    font-size: 8px;
+    color: #185FA5;
+    font-weight: 600;
+    background: #B5D4F4;
+    padding: 2px 5px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+
+  .input-bar {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 8px 9px;
+    border-top: 0.5px solid rgba(0,0,0,0.07);
+    flex-shrink: 0;
+  }
+
+  .text-input-mock {
+    flex: 1;
+    height: 26px;
+    background: #f5f5f3;
+    border-radius: 13px;
+    border: 0.5px solid rgba(0,0,0,0.08);
+    font-size: 8.5px;
+    padding: 0 8px;
+    display: flex;
+    align-items: center;
+    color: #bbb;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .mic-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f5f5f3;
+    border: 0.5px solid rgba(0,0,0,0.1);
+    flex-shrink: 0;
+  }
+
+  .send-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #1a1a1a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .voice-screen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 8px 6px;
+  }
+
+  .voice-label {
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    color: #888;
+    margin-bottom: 8px;
+  }
+
+  .waveform-wrap {
+    width: 100%;
+    height: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    margin-bottom: 8px;
+  }
+
+  .wave-bar {
+    width: 3px;
+    border-radius: 2px;
+    background: #E24B4A;
+    animation: wave 0.8s ease-in-out infinite alternate;
+    opacity: 0.85;
+  }
+
+  .wave-bar:nth-child(1)  { height: 8px;  animation-delay: 0s; }
+  .wave-bar:nth-child(2)  { height: 18px; animation-delay: 0.07s; }
+  .wave-bar:nth-child(3)  { height: 28px; animation-delay: 0.14s; }
+  .wave-bar:nth-child(4)  { height: 36px; animation-delay: 0.21s; }
+  .wave-bar:nth-child(5)  { height: 28px; animation-delay: 0.28s; }
+  .wave-bar:nth-child(6)  { height: 40px; animation-delay: 0.10s; }
+  .wave-bar:nth-child(7)  { height: 32px; animation-delay: 0.17s; }
+  .wave-bar:nth-child(8)  { height: 20px; animation-delay: 0.24s; }
+  .wave-bar:nth-child(9)  { height: 12px; animation-delay: 0.31s; }
+  .wave-bar:nth-child(10) { height: 8px;  animation-delay: 0.38s; }
+
+  @keyframes wave { from{transform:scaleY(0.4)} to{transform:scaleY(1)} }
+
+  .transcript-box {
+    width: 100%;
+    background: #f5f5f3;
+    border: 0.5px solid rgba(0,0,0,0.08);
+    border-radius: 8px;
+    padding: 6px 8px;
+    font-size: 8.5px;
+    line-height: 1.5;
+    color: #1a1a1a;
+    min-height: 46px;
+    flex: 1;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .transcript-live { color: #999; font-style: italic; }
+  .transcript-done { color: #1a1a1a; }
+
+  .edit-hint {
+    font-size: 7.5px;
+    color: #bbb;
+    margin-top: 3px;
+    text-align: right;
+    display: block;
+  }
+
+  .voice-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 6px;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .v-btn {
+    height: 22px;
+    border-radius: 11px;
+    font-size: 8px;
+    font-weight: 500;
+    padding: 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    border: 0.5px solid rgba(0,0,0,0.12);
+    background: #f5f5f3;
+    color: #666;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .v-btn.primary {
+    background: #1a1a1a;
+    color: white;
+    border-color: #1a1a1a;
+  }
+
+  .stop-circle {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 1.5px solid #E24B4A;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 4px auto 0;
+    cursor: pointer;
+  }
+
+  .stop-sq {
+    width: 10px;
+    height: 10px;
+    background: #E24B4A;
+    border-radius: 2px;
+  }
+
+  .ai-typing {
+    display: flex;
+    gap: 3px;
+    align-items: center;
+    padding: 5px 7px;
+    background: #f5f5f3;
+    border: 0.5px solid rgba(0,0,0,0.07);
+    border-radius: 4px 10px 10px 10px;
+    align-self: flex-start;
+    width: fit-content;
+  }
+
+  .dot {
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: #bbb;
+    animation: dot-bounce 1.2s infinite;
+  }
+
+  .dot:nth-child(2) { animation-delay: 0.2s; }
+  .dot:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes dot-bounce {
+    0%,80%,100%{transform:translateY(0)}
+    40%{transform:translateY(-4px)}
+  }
+
+  .annotation {
+    margin-top: 12px;
+    max-width: 172px;
+    text-align: center;
+  }
+
+  .ann-title {
+    font-size: 10.5px;
+    font-weight: 500;
+    color: #1a1a1a;
+    margin-bottom: 3px;
+  }
+
+  .ann-desc {
+    font-size: 9px;
+    color: #777;
+    line-height: 1.45;
+  }
+
+  .ann-tag {
+    display: inline-block;
+    margin-top: 5px;
+    font-size: 8px;
+    font-weight: 500;
+    padding: 2px 7px;
+    border-radius: 4px;
+  }
+
+  .tag-blue  { background: #E6F1FB; color: #185FA5; }
+  .tag-red   { background: #FCEBEB; color: #A32D2D; }
+  .tag-green { background: #EAF3DE; color: #3B6D11; }
+  .tag-gray  { background: #f0f0ee; color: #666; border: 0.5px solid rgba(0,0,0,0.1); }
+
+  .divider {
+    width: 100%;
+    max-width: 900px;
+    height: 0.5px;
+    background: rgba(0,0,0,0.1);
+    margin: 2.5rem 0 2rem;
+  }
+
+  .rationale-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: #1a1a1a;
+    text-align: center;
+    margin-bottom: 4px;
+  }
+
+  .rationale-sub {
+    font-size: 10px;
+    color: #888;
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .callout-row {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    max-width: 700px;
+  }
+
+  .callout {
+    width: 155px;
+    padding: 12px 13px;
+    border: 0.5px solid rgba(0,0,0,0.1);
+    border-radius: 12px;
+    background: white;
+  }
+
+  .callout-icon { font-size: 16px; margin-bottom: 6px; }
+  .callout-title { font-size: 10px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px; }
+  .callout-body  { font-size: 9px; color: #777; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<p class="page-title">Mobile UI Prototype · ChatGPT Voice Input for College Students</p>
+
+<div class="flow-row">
+
+  <!-- SCREEN 1 -->
+  <div class="screen-col">
+    <p class="step-badge">01 — Typing nudge</p>
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-status"><span>9:41</span><span>◼◼◼ ▶</span></div>
+      <div class="phone-header">
+        <div class="gpt-logo">G</div>
+        <span class="header-title">ChatGPT</span>
+        <span class="header-dots">···</span>
+      </div>
+      <div class="chat-area">
+        <div class="bubble ai">Hey! What would you like to work on today?</div>
+        <div class="bubble user typing">
+          Explain how thermodynamic equilibrium relates to entropy in the context of isolated systems and whether a system can spontaneously move away from<span class="typing-cursor"></span>
+        </div>
+      </div>
+      <div class="nudge-bar">
+        <div class="nudge-icon">
+          <svg width="8" height="10" viewBox="0 0 8 10" fill="none">
+            <rect x="2.5" y="0.5" width="3" height="5" rx="1.5" fill="white"/>
+            <path d="M1 5.5c0 1.66 1.34 3 3 3s3-1.34 3-3" stroke="white" stroke-width="0.8" fill="none" stroke-linecap="round"/>
+            <line x1="4" y1="8.5" x2="4" y2="9.5" stroke="white" stroke-width="0.8"/>
+          </svg>
+        </div>
+        <span class="nudge-text">Try voice for faster input</span>
+        <span class="nudge-try">Try →</span>
+      </div>
+      <div class="input-bar">
+        <div class="text-input-mock">Message…</div>
+        <div class="mic-btn">
+          <svg width="8" height="10" viewBox="0 0 8 10" fill="none">
+            <rect x="2.5" y="0.5" width="3" height="5" rx="1.5" fill="#888"/>
+            <path d="M1 5.5c0 1.66 1.34 3 3 3s3-1.34 3-3" stroke="#888" stroke-width="0.8" fill="none" stroke-linecap="round"/>
+            <line x1="4" y1="8.5" x2="4" y2="9.5" stroke="#888" stroke-width="0.8"/>
+          </svg>
+        </div>
+        <div class="send-btn">
+          <svg width="10" height="10" viewBox="0 0 10 10">
+            <path d="M2 5h6M5 2l3 3-3 3" stroke="white" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+    <div class="annotation">
+      <p class="ann-title">Contextual nudge</p>
+      <p class="ann-desc">Appears after 80+ chars typed — non-intrusive, dismissable banner above the input bar</p>
+      <span class="ann-tag tag-blue">Triggers at 80 chars</span>
+    </div>
+  </div>
+
+  <div class="arrow-col">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style="opacity:0.35">
+      <path d="M5 12h14M14 7l5 5-5 5" stroke="#555" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+
+  <!-- SCREEN 2 -->
+  <div class="screen-col">
+    <p class="step-badge">02 — Listening</p>
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-status"><span>9:41</span><span>◼◼◼ ▶</span></div>
+      <div class="phone-header">
+        <div class="gpt-logo">G</div>
+        <span class="header-title">Voice input</span>
+        <span style="font-size:8px;color:#A32D2D;font-weight:500;padding:2px 6px;background:#FCEBEB;border-radius:4px;">● live</span>
+      </div>
+      <div class="voice-screen">
+        <p class="voice-label" style="color:#E24B4A;font-weight:600;">Listening…</p>
+        <div class="waveform-wrap">
+          <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+          <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+          <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+          <div class="wave-bar"></div>
+        </div>
+        <div class="transcript-box">
+          <span class="transcript-done">Explain how thermodynamic equilibrium relates to entropy in isolated systems — </span>
+          <span class="transcript-live">and can a system spontaneously move away...<span class="typing-cursor"></span></span>
+          <span class="edit-hint">Tap text to edit</span>
+        </div>
+        <p style="font-size:8px;color:#bbb;margin-top:4px;text-align:center;">Speak naturally — no need to rush</p>
+        <div class="stop-circle"><div class="stop-sq"></div></div>
+        <p style="font-size:7.5px;color:#bbb;margin-top:3px;">Tap to stop</p>
+        <div class="voice-actions" style="margin-top:5px;">
+          <div class="v-btn">Cancel</div>
+        </div>
+      </div>
+    </div>
+    <div class="annotation">
+      <p class="ann-title">Live transcription</p>
+      <p class="ann-desc">Text streams in real-time as the user speaks. Waveform confirms mic is active</p>
+      <span class="ann-tag tag-red">● recording</span>
+    </div>
+  </div>
+
+  <div class="arrow-col">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style="opacity:0.35">
+      <path d="M5 12h14M14 7l5 5-5 5" stroke="#555" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+
+  <!-- SCREEN 3 -->
+  <div class="screen-col">
+    <p class="step-badge">03 — Review &amp; edit</p>
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-status"><span>9:41</span><span>◼◼◼ ▶</span></div>
+      <div class="phone-header">
+        <div class="gpt-logo">G</div>
+        <span class="header-title">Review before sending</span>
+        <span style="font-size:8px;color:#3B6D11;font-weight:500;">done</span>
+      </div>
+      <div class="voice-screen">
+        <p class="voice-label">Transcript — tap to correct</p>
+        <div class="transcript-box" style="min-height:90px;border-color:#C0DD97;background:#f5f5f3;flex:none;">
+          <span class="transcript-done">Explain how thermodynamic equilibrium relates to entropy in isolated systems, and whether a system can spontaneously move away from it according to the second law of thermodynamics.</span>
+          <span class="edit-hint">✓ Tap any word to edit</span>
+        </div>
+        <p style="font-size:8px;color:#bbb;margin-top:5px;text-align:center;line-height:1.4;">Recorded while quiet — no one heard you ask</p>
+        <div style="width:100%;margin-top:7px;padding:7px 8px;background:#f5f5f3;border-radius:8px;border:0.5px solid rgba(0,0,0,0.07);">
+          <p style="font-size:8px;color:#888;margin-bottom:4px;font-weight:500;">Options</p>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:8px;color:#666;display:flex;align-items:center;gap:5px;cursor:pointer;">
+              <input type="checkbox" checked style="width:10px;height:10px;accent-color:#1a1a1a;"> Auto-punctuate
+            </label>
+            <label style="font-size:8px;color:#666;display:flex;align-items:center;gap:5px;cursor:pointer;">
+              <input type="checkbox" style="width:10px;height:10px;accent-color:#1a1a1a;"> Silence filler words
+            </label>
+          </div>
+        </div>
+        <div class="voice-actions" style="margin-top:8px;">
+          <div class="v-btn">Re-record</div>
+          <div class="v-btn primary">Send →</div>
+        </div>
+      </div>
+    </div>
+    <div class="annotation">
+      <p class="ann-title">Edit before sending</p>
+      <p class="ann-desc">Fixes accuracy issues — user corrects any mis-heard words before committing</p>
+      <span class="ann-tag tag-green">Solves accuracy</span>
+    </div>
+  </div>
+
+  <div class="arrow-col">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style="opacity:0.35">
+      <path d="M5 12h14M14 7l5 5-5 5" stroke="#555" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+
+  <!-- SCREEN 4 -->
+  <div class="screen-col">
+    <p class="step-badge">04 — Response</p>
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-status"><span>9:42</span><span>◼◼◼ ▶</span></div>
+      <div class="phone-header">
+        <div class="gpt-logo">G</div>
+        <span class="header-title">ChatGPT</span>
+        <span class="header-dots">···</span>
+      </div>
+      <div class="chat-area">
+        <div class="bubble ai">Hey! What would you like to work on today?</div>
+        <div class="bubble user">
+          Explain how thermodynamic equilibrium relates to entropy in isolated systems, and whether a system can spontaneously move away from it per the second law.
+        </div>
+        <div class="ai-typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+        <div class="bubble ai" style="opacity:0.65;font-style:italic;">
+          Great question! Thermodynamic equilibrium is the state where entropy is maximised…
+        </div>
+      </div>
+      <div style="margin:0 8px 3px;padding:4px 8px;background:#f5f5f3;border-radius:6px;border:0.5px solid rgba(0,0,0,0.07);display:flex;align-items:center;gap:5px;">
+        <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+          <circle cx="4" cy="4" r="3" stroke="#bbb" stroke-width="0.8"/>
+          <path d="M4 2v2l1.2 1.2" stroke="#bbb" stroke-width="0.8" stroke-linecap="round"/>
+        </svg>
+        <span style="font-size:7.5px;color:#bbb;">Response generating — stay quiet</span>
+      </div>
+      <div class="input-bar">
+        <div class="text-input-mock">Follow-up question…</div>
+        <div class="mic-btn">
+          <svg width="8" height="10" viewBox="0 0 8 10" fill="none">
+            <rect x="2.5" y="0.5" width="3" height="5" rx="1.5" fill="#888"/>
+            <path d="M1 5.5c0 1.66 1.34 3 3 3s3-1.34 3-3" stroke="#888" stroke-width="0.8" fill="none" stroke-linecap="round"/>
+            <line x1="4" y1="8.5" x2="4" y2="9.5" stroke="#888" stroke-width="0.8"/>
+          </svg>
+        </div>
+        <div class="send-btn">
+          <svg width="10" height="10" viewBox="0 0 10 10">
+            <path d="M2 5h6M5 2l3 3-3 3" stroke="white" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+    <div class="annotation">
+      <p class="ann-title">Normal response flow</p>
+      <p class="ann-desc">Returns to standard chat — mic is always available for follow-ups</p>
+      <span class="ann-tag tag-gray">Library-safe</span>
+    </div>
+  </div>
+
+</div>
+
+<div class="divider"></div>
+
+<p class="rationale-title">Design rationale</p>
+<p class="rationale-sub">How each decision solves a real student pain point</p>
+
+<div class="callout-row">
+  <div class="callout">
+    <div class="callout-icon">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <circle cx="9" cy="9" r="8" fill="#E6F1FB"/>
+        <path d="M6 9l2.5 2.5L13 6" stroke="#185FA5" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <p class="callout-title">Solves accuracy anxiety</p>
+    <p class="callout-body">Review-before-send lets students fix mis-heard jargon (e.g. "Laplacian") before submitting</p>
+  </div>
+  <div class="callout">
+    <div class="callout-icon">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <circle cx="9" cy="9" r="8" fill="#FCEBEB"/>
+        <rect x="7" y="5" width="4" height="6" rx="2" stroke="#A32D2D" stroke-width="1.2" fill="none"/>
+        <path d="M6 11c0 1.66 1.34 2.5 3 2.5s3-.84 3-2.5" stroke="#A32D2D" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <p class="callout-title">Solves social discomfort</p>
+    <p class="callout-body">Silent mode — voice enters as private text, invisible to peers in library or classroom</p>
+  </div>
+  <div class="callout">
+    <div class="callout-icon">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <circle cx="9" cy="9" r="8" fill="#EAF3DE"/>
+        <path d="M6 9h6M9 6v6" stroke="#3B6D11" stroke-width="1.2" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <p class="callout-title">Contextual, not forced</p>
+    <p class="callout-body">Nudge only appears after long typing sessions — never disrupts short or casual queries</p>
+  </div>
+  <div class="callout">
+    <div class="callout-icon">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <circle cx="9" cy="9" r="8" fill="#FAEEDA"/>
+        <path d="M5.5 9.5l1 1.5 1-1.5 1 1.5 1-1.5 1 1.5 1-1.5" stroke="#854F0B" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <path d="M5 7.5c0-2.2 1.8-4 4-4s4 1.8 4 4" stroke="#854F0B" stroke-width="1.2" fill="none"/>
+      </svg>
+    </div>
+    <p class="callout-title">Speed for dense questions</p>
+    <p class="callout-body">Speech averages 130 wpm vs 40 wpm typing — voice cuts input time by 3× for academic queries</p>
+  </div>
+</div>
+
+</body>
+</html>
